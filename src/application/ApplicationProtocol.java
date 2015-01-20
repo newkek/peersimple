@@ -4,16 +4,23 @@ import peersim.edsim.*;
 import peersim.core.*;
 import peersim.config.*;
 import java.util.Random;
+import java.util.List;
+import java.util.ArrayList;
+import java.util.Stack;
+import java.lang.Integer;
+
 
 public class ApplicationProtocol implements EDProtocol
 {   
         //identifiant de la couche transport
         private int transportPid;
+
         //objet couche transport
         private MatrixTransport transport;
 
         //identifiant de la couche courante (la couche applicative)
         private int mypid;
+
         //prefixe de la couche (nom de la variable de protocole du fichier de config)
         private String prefix;
 
@@ -26,6 +33,17 @@ public class ApplicationProtocol implements EDProtocol
         //état du noeud dans l'application
         private long state;
 
+        //nb de message envoyés
+        private int nbSent[];
+
+        //nb de messages recus
+        private int nbRcvd[];
+
+        //pile de checkpoints
+        private Stack<Checkpoint> checkpoints;
+
+
+
 
         public ApplicationProtocol(String prefix)
         { 
@@ -36,6 +54,9 @@ public class ApplicationProtocol implements EDProtocol
                 this.transport = null;
                 this.state = 0;
                 this.rand = new Random();
+                this.nbSent = new int[Network.size()];
+                this.nbRcvd = new int[Network.size()];
+                this.checkpoints = new Stack<Checkpoint>();
         }
 
 
@@ -73,6 +94,7 @@ public class ApplicationProtocol implements EDProtocol
                 for (int i=0; i<Network.size(); i++)
                 {
                         this.transport.send(getMyNode(), Network.get(i), msg, this.mypid);
+
                 }
         }
 
@@ -81,6 +103,7 @@ public class ApplicationProtocol implements EDProtocol
         {
                 System.out.println("[t=" + CommonState.getTime() +"] " + this + " : Send " + msg.getContent());
                 this.transport.send(getMyNode(), dest, msg, this.mypid);
+                this.nbSent[dest.getIndex()]++;
         }
 
 
@@ -97,24 +120,31 @@ public class ApplicationProtocol implements EDProtocol
                                 
                                 if (this.rand.nextFloat() < 0.5)
                                 {
-                                        Message msg = new Message(Message.APPLICATION, "<fehhfzihfiheiuhfizh>");
+                                        Message msg = new Message(Message.APPLICATION, "<fehhfzihfiheiuhfizh>", this.nodeId);
                                         Node dest = Network.get(this.rand.nextInt(Network.size()));
                                         this.send(msg, dest);
                                 }
 
                                 if (this.rand.nextFloat() < 0.005)
                                 {
-                                        Message msg = new Message(Message.APPLICATION, "<this is a broadcast>");
+                                        Message msg = new Message(Message.APPLICATION, "<this is a broadcast>", this.nodeId);
                                         this.broadcast(msg);
                                 }
                                 break;
 
                         case Message.CHECKPOINT:
-                                
+
+                                this.addCheckpoint();
                                 this.addCheckpointEvent();
+
                                 break;
 
+                        case Message.APPLICATION:
+
+                                this.nbRcvd[r_msg.getEmitter()]++;
+
                         default:
+
                                 break;
                 }
         }
@@ -131,6 +161,12 @@ public class ApplicationProtocol implements EDProtocol
                 Message message = new Message(Message.CHECKPOINT, "<checkpoint yourself>");
                 int delay = this.rand.nextInt(31)+45;
                 EDSimulator.add(delay, message, this.getMyNode(), this.mypid);
+        }
+
+        private void addCheckpoint(){
+                Checkpoint toAdd = new Checkpoint(this.state, this.nbSent, this.nbRcvd);
+                checkpoints.push(toAdd);
+                System.out.println("new checkpoint added : " + toAdd);
         }
 
         //retourne le noeud courant

@@ -10,11 +10,20 @@ public class Message
 
     private int type;
     private String content;
+    private int emitter;
 
-    Message(int type, String content)
+    public Message(int type, String content, int pemitter)
     {
 	this.type = type;
 	this.content = content;
+    this.emitter = pemitter;
+    }
+
+    public Message(int type, String content)
+    {
+    this.type = type;
+    this.content = content;
+    this.emitter= -1;
     }
 
     public String getContent()
@@ -25,5 +34,10 @@ public class Message
     public int getType()
     {
 	return this.type;
+    }
+
+    public int getEmitter()
+    {
+        return this.emitter;
     }
 }

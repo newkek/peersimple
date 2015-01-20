@@ -5,40 +5,40 @@ import java.lang.Integer;
 
 public class Checkpoint
 {
-        private int state;
-        private List<Integer> nbSent;
-        private List<Integer> nbRecv;
+        private long state;
+        private int  nbSent[];
+        private int  nbRecv[];
 
-        public Checkpoint(int state, List<Integer> nbSent, List<Integer>nbRecv)
+        public Checkpoint(long state, int nbSent[], int nbRecv[])
         {
                 this.state = state;
                 this.nbSent = nbSent;
                 this.nbRecv = nbRecv;
         }
 
-        public int getState()
+        public long getState()
         {
                 return this.state;
         }
 
-        public List<Integer> getNbRecv()
+        public int[] getNbRecv()
         {
                 return this.nbRecv;
         }
         
-        public List<Integer> getNbSent()
+        public int[] getNbSent()
         {
                 return this.nbSent;
         }
 
         public int getNbSent(int i)
         {
-                return this.nbSent.get(i);
+                return this.nbSent[i];
         }
         
         public int getNbRecv(int i)
         {
-                return this.nbRecv.get(i);
+                return this.nbRecv[i];
         }
 
         public String toString()
