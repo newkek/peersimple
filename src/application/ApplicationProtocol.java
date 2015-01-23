@@ -28,7 +28,7 @@ public class ApplicationProtocol implements EDProtocol
         private int nodeId;
 
         //pour tirer des valeurs aléatoires
-        private Random rand;
+        //private Random rand;
 
         //état du noeud dans l'application
         private long state;
@@ -53,7 +53,7 @@ public class ApplicationProtocol implements EDProtocol
                 this.mypid = Configuration.getPid(prefix + ".myself");
                 this.transport = null;
                 this.state = 0;
-                this.rand = new Random();
+                //this.rand = new Random();
                 this.nbSent = new int[Network.size()];
                 this.nbRcvd = new int[Network.size()];
                 this.checkpoints = new Stack<Checkpoint>();
@@ -118,14 +118,14 @@ public class ApplicationProtocol implements EDProtocol
                                 this.state++;
                                 this.addIncreaseStateEvent(); 
                                 
-                                if (this.rand.nextFloat() < 0.5)
+                                if (CommonState.r.nextFloat() < Configuration.getFloat(prefix + "probaMessage"))
                                 {
                                         Message msg = new Message(Message.APPLICATION, "<fehhfzihfiheiuhfizh>", this.nodeId);
-                                        Node dest = Network.get(this.rand.nextInt(Network.size()));
+                                        Node dest = Network.get(CommonState.r.nextInt(Network.size()));
                                         this.send(msg, dest);
                                 }
 
-                                if (this.rand.nextFloat() < 0.005)
+                                if (CommonState.r.nextFloat() < Configuration.getFloat(prefix + "probaBroacast"))
                                 {
                                         Message msg = new Message(Message.APPLICATION, "<this is a broadcast>", this.nodeId);
                                         this.broadcast(msg);
@@ -149,17 +149,18 @@ public class ApplicationProtocol implements EDProtocol
                 }
         }
 
+
         private void addIncreaseStateEvent()
         {
                 Message message = new Message(Message.INC_STATE, "<increase state>");
-                int delay = this.rand.nextInt(11)+10;
+                int delay = CommonState.r.nextInt(11)+10;
                 EDSimulator.add(delay, message, this.getMyNode(), this.mypid);
         }
         
         private void addCheckpointEvent()
         {
                 Message message = new Message(Message.CHECKPOINT, "<checkpoint yourself>");
-                int delay = this.rand.nextInt(31)+45;
+                int delay = CommonState.r.nextInt(31)+45;
                 EDSimulator.add(delay, message, this.getMyNode(), this.mypid);
         }
 
