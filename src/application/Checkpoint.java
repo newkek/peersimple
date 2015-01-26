@@ -7,13 +7,13 @@ public class Checkpoint
 {
         private long state;
         private int  nbSent[];
-        private int  nbRecv[];
+        private int  nbRcvd[];
 
-        public Checkpoint(long state, int nbSent[], int nbRecv[])
+        public Checkpoint(long state, int nbSent[], int nbRcvd[])
         {
                 this.state = state;
                 this.nbSent = nbSent;
-                this.nbRecv = nbRecv;
+                this.nbRcvd = nbRcvd;
         }
 
         public long getState()
@@ -21,9 +21,9 @@ public class Checkpoint
                 return this.state;
         }
 
-        public int[] getNbRecv()
+        public int[] getNbRcvd()
         {
-                return this.nbRecv;
+                return this.nbRcvd;
         }
         
         public int[] getNbSent()
@@ -36,14 +36,32 @@ public class Checkpoint
                 return this.nbSent[i];
         }
         
-        public int getNbRecv(int i)
+        public int getNbRcvd(int i)
         {
-                return this.nbRecv[i];
+                return this.nbRcvd[i];
         }
 
         public String toString()
         {
-                return "state " + this.state + " : nbSent " + this.nbSent + " : nbRecv " + this.nbRecv;
+                String str = "state " + this.state + " : nbSent [";
+                for (int i=0; i<nbSent.length; i++)
+                {
+                        str += this.nbSent[i]+"";
+                        if (i<nbSent.length-1)
+                        {
+                                str += ",";
+                        } 
+                }
+                str += "] : nbRcvd [";
+                for (int i=0; i<nbRcvd.length; i++)
+                {
+                        str += nbRcvd[i]+"";
+                        if (i<nbRcvd.length-1)
+                        {
+                                str += ",";
+                        } 
+                }
+                return str + "]";
         }
 }
 

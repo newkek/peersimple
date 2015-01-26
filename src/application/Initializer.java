@@ -7,43 +7,44 @@ import peersim.config.*;
 /*
   Module d'initialisation de helloWorld: 
   Fonctionnement:
-    pour chaque noeud, le module fait le lien entre la couche transport et la couche applicative
-    ensuite, il fait envoyer au noeud 0 un message "Hello" a tous les autres noeuds
- */
+  pour chaque noeud, le module fait le lien entre la couche transport et la couche applicative
+  ensuite, il fait envoyer au noeud 0 un message "Hello" a tous les autres noeuds
+  */
 public class Initializer implements peersim.core.Control
 {    
-    private int applicationPid;
+        private int applicationPid;
 
-    public Initializer(String prefix)
-    {
-	//recuperation du pid de la couche applicative
-	this.applicationPid = Configuration.getPid(prefix + ".applicationProtocolPid");
-    }
-
-    public boolean execute()
-    {
-	int nodeNb;
-	ApplicationProtocol appProto;
-	Node node;
-
-	//recuperation de la taille du reseau
-	nodeNb = Network.size();
-
-        if (nodeNb < 1)
+        public Initializer(String prefix)
         {
-	    System.err.println("Network size is not positive");
-	    System.exit(1);
-	}
+                //recuperation du pid de la couche applicative
+                this.applicationPid = Configuration.getPid(prefix + ".applicationProtocolPid");
+        }
 
-	//pour chaque noeud, on fait le lien entre la couche applicative et la couche transport
-	for (int i = 0; i < nodeNb; i++)
+        public boolean execute()
         {
-	    node = Network.get(i);
-	    appProto = (ApplicationProtocol)node.getProtocol(this.applicationPid);
-	    appProto.init(i);
-	}
+                int nodeNb;
+                ApplicationProtocol appProto;
+                Node node;
 
-	System.out.println("Initialization completed");
-	return false;
-    }
+                //recuperation de la taille du reseau
+                nodeNb = Network.size();
+
+                if (nodeNb < 1)
+                {
+                        System.err.println("Network size is not positive");
+                        System.exit(1);
+                }
+
+                //pour chaque noeud, on fait le lien entre la couche applicative et la couche transport
+                for (int i = 0; i < nodeNb; i++)
+                {
+                        node = Network.get(i);
+                        appProto = (ApplicationProtocol)node.getProtocol(this.applicationPid);
+                        appProto.init(i);
+                }
+                EDSimulator.add(100, new Message(Message.ROLLBACK, "10", 1), Network.get(1), 0);
+
+                System.out.println("Initialization completed");
+                return false;
+        }
 }
