@@ -1,3 +1,5 @@
 src/application/*.class
+src/application/*.swp
 src/peersim/**/*.class
 src/peersim/*.class
+*.swp

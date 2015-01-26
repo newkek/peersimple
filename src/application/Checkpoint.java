@@ -16,6 +16,12 @@ public class Checkpoint
                 this.nbRcvd = nbRcvd;
         }
 
+        public Checkpoint()
+        {
+                this.state = -1;
+        }
+
+
         public long getState()
         {
                 return this.state;
