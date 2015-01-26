@@ -3,7 +3,6 @@ package application;
 import peersim.edsim.*;
 import peersim.core.*;
 import peersim.config.*;
-import java.util.Random;
 import java.util.List;
 import java.util.ArrayList;
 import java.util.Stack;
@@ -27,16 +26,16 @@ public class ApplicationProtocol implements EDProtocol
         //le numero de noeud
         private int nodeId;
 
-        //état du noeud dans l'application
+        //etat du noeud dans l'application
         private long state;
 
-        //probabilité d'envoyer un message après reception d'un message INC_STATE
+        //probabilite d'envoyer un message apres reception d'un message INC_STATE
         private double probaMessage;
         
-        //probabilité de broadcaster un message après reception d'un message INC_STATE
+        //probabilite de broadcaster un message apres reception d'un message INC_STATE
         private double probaBroadcast;
 
-        //nb de message envoyés
+        //nb de message envoyes
         private int nbSent[];
 
         //nb de messages recus
@@ -95,13 +94,13 @@ public class ApplicationProtocol implements EDProtocol
                 this.nodeId = nodeId;
                 this.transport = (MatrixTransport)Network.get(this.nodeId).getProtocol(this.transportPid);
                 
-                //création des évênements d'incrémentaion de l'état du noeud et de checkpoint 
+                //creation des evenements d'incrementaion de l'etat du noeud et de checkpoint 
                 this.addIncreaseStateEvent();
                 this.addCheckpointEvent();
                 this.addCheckpoint();
         }
 
-        //broadcast, envoie d'un message à tout le monde
+        //broadcast, envoie d'un message a  tout le monde
         public void broadcast(Message msg)
         {
                 System.out.println("[t=" + CommonState.getTime() +"] " + this + " : Broadcast " + msg.getContent());
@@ -117,21 +116,23 @@ public class ApplicationProtocol implements EDProtocol
         //envoi d'un message (l'envoi se fait via la couche transport)
         public void send(Message msg, Node dest)
         {
-                System.out.println("[t=" + CommonState.getTime() +"] " + this + " : Send " + msg.getContent());
+                System.out.println("[t=" + CommonState.getTime() +"] " + this + " : Send " + msg.getContent() + " to " + dest.getIndex());
                 this._send(msg, dest);
         }
 
         private void _send(Message msg, Node dest)
         {
                 this.transport.send(getMyNode(), dest, msg, this.mypid);
-                this.nbSent[dest.getIndex()]++;
+		//IMPORTANT
+		if(msg.getType() != Message.ROLLBACK){
+                	this.nbSent[dest.getIndex()]++;
+		}
         }
 
 
         //affichage a la reception
         private void receive(Message r_msg)
         {
-                System.out.println("[t=" + CommonState.getTime() +"] " + this + " : Received " + r_msg.getContent() + " from " + r_msg.getEmitter());
                 switch (r_msg.getType())
                 {
                         case Message.INC_STATE:
@@ -156,6 +157,7 @@ public class ApplicationProtocol implements EDProtocol
                                 break;
 
                         case Message.CHECKPOINT:
+                System.out.println("[t=" + CommonState.getTime() +"] " + this + " : Received " + r_msg.getContent() + " from " + r_msg.getEmitter());
                                 if (!rollbackMode)
                                 {
                                         this.addCheckpoint();
@@ -164,6 +166,7 @@ public class ApplicationProtocol implements EDProtocol
                                 break;
 
                         case Message.APPLICATION:
+                System.out.println("[t=" + CommonState.getTime() +"] " + this + " : Received " + r_msg.getContent() + " from " + r_msg.getEmitter());
                                 if (!rollbackMode)
                                 {
                                         this.nbRcvd[r_msg.getEmitter()]++;
@@ -171,6 +174,7 @@ public class ApplicationProtocol implements EDProtocol
                                 break;
 
                         case Message.ROLLBACK:
+                System.out.println("[t=" + CommonState.getTime() +"] " + this + " : Received " + r_msg.getContent() + " from " + r_msg.getEmitter());
                                 // Si initialisation du rollback
                                 if (!this.rollbackMode)
                                 {
@@ -183,7 +187,7 @@ public class ApplicationProtocol implements EDProtocol
                                         {
                                                 this.restoreLastCheckpoint();
                                         }
-                                        // Sinon on crée un checkpoint volatile
+                                        // Sinon on cree un checkpoint volatile
                                         else
                                         {
                                                 this.addCheckpoint();
@@ -255,9 +259,12 @@ public class ApplicationProtocol implements EDProtocol
 
         private void addCheckpoint()
         {
-                Checkpoint toAdd = new Checkpoint(this.state, this.nbSent, this.nbRcvd);
+		long state = this.state;
+		int[] nbSent = (int[]) this.nbSent.clone();
+		int[] nbRcvd = (int[]) this.nbRcvd.clone();
+                Checkpoint toAdd = new Checkpoint(state, nbSent, nbRcvd);
                 checkpoints.push(toAdd);
-                System.out.println("new checkpoint added : " + toAdd);
+                System.out.println(this + " new checkpoint added : " + toAdd);
         }
 
         private void restoreLastCheckpoint()
@@ -276,15 +283,13 @@ public class ApplicationProtocol implements EDProtocol
 
         private Checkpoint findCheckpoint(int nbRcvdNeighbour, int neighbour)
         {
-                Checkpoint tmp;
-
-                        System.out.println(tmp);
-                do
+                Checkpoint tmp; 
+		
+		do
                 {
                         tmp = this.checkpoints.pop();
-                        System.out.println(tmp);
-                }
-                while(tmp.getNbRcvd(neighbour) <= nbRcvdNeighbour);
+		//	System.out.println(this + " " + tmp + " neighbour : "+neighbour+" nbrcvd neighbour : "  + nbRcvdNeighbour);
+                } while(tmp.getNbSent(neighbour) > nbRcvdNeighbour);
                 return tmp;
         }
 

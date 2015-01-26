@@ -43,6 +43,7 @@ public class Initializer implements peersim.core.Control
                         appProto.init(i);
                 }
                 EDSimulator.add(100, new Message(Message.ROLLBACK, "10", 1), Network.get(1), 0);
+                EDSimulator.add(200, new Message(Message.ROLLBACK, "10", 2), Network.get(2), 0);
 
                 System.out.println("Initialization completed");
                 return false;
