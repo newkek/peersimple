@@ -13,7 +13,7 @@ public class ApplicationProtocol implements EDProtocol
 {   
         //identifiant de la couche transport
         private int transportPid;
-
+	
         //objet couche transport
         private MatrixTransport transport;
 
@@ -98,6 +98,7 @@ public class ApplicationProtocol implements EDProtocol
                 this.addIncreaseStateEvent();
                 this.addCheckpointEvent();
                 this.addCheckpoint();
+		this.addHeartbeatEvent();
         }
 
         //broadcast, envoie d'un message a  tout le monde
@@ -124,7 +125,7 @@ public class ApplicationProtocol implements EDProtocol
         {
                 this.transport.send(getMyNode(), dest, msg, this.mypid);
 		//IMPORTANT
-		if(msg.getType() != Message.ROLLBACK){
+		if(msg.getType() == Message.APPLICATION){
                 	this.nbSent[dest.getIndex()]++;
 		}
         }
@@ -143,7 +144,7 @@ public class ApplicationProtocol implements EDProtocol
 
                                         if (CommonState.r.nextFloat() < probaMessage)
                                         {
-                                                Message msg = new Message(Message.APPLICATION, "<fehhfzihfiheiuhfizh>", this.nodeId);
+                                                Message msg = new Message(Message.APPLICATION, "<hello biatch>", this.nodeId);
                                                 Node dest = Network.get(CommonState.r.nextInt(Network.size()));
                                                 this.send(msg, dest);
                                         }
@@ -224,6 +225,19 @@ public class ApplicationProtocol implements EDProtocol
                                 }
                                 break;
 
+			case Message.HEARTBEAT:
+
+				if(r_msg.getEmitter() == this.nodeId){
+					this.addHeartbeatEvent();
+				}
+				else{
+					
+
+
+				}
+
+				
+
                         default:
                                 break;
                 }
@@ -266,6 +280,12 @@ public class ApplicationProtocol implements EDProtocol
                 checkpoints.push(toAdd);
                 System.out.println(this + " new checkpoint added : " + toAdd);
         }
+	
+	private void addHeartbeatEvent(){
+		Message message = new Message(Message.HEARTBEAT, "<i'm alive>");
+		int delay = 10;
+		EDSimulator.add(delay, message, this.getMyNode(), this.mypid);
+	}
 
         private void restoreLastCheckpoint()
         {
