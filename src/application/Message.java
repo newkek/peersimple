@@ -8,6 +8,9 @@ public class Message
         public final static int INC_STATE = 1;
         public final static int CHECKPOINT = 2;
         public final static int ROLLBACK = 3;
+        public final static int HEARTBEAT = 4;
+        public final static int STILLALIVE = 5;
+	
 
         private int type;
         private String content;
