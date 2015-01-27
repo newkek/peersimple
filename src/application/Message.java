@@ -10,6 +10,7 @@ public class Message
         public final static int ROLLBACK = 3;
         public final static int HEARTBEAT = 4;
         public final static int STILLALIVE = 5;
+	public final static int HBCHECK = 6;
 	
 
         private int type;

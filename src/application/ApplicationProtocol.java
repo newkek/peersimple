@@ -3,8 +3,7 @@ package application;
 import peersim.edsim.*;
 import peersim.core.*;
 import peersim.config.*;
-import java.util.List;
-import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Stack;
 import java.lang.Integer;
 
@@ -47,9 +46,15 @@ public class ApplicationProtocol implements EDProtocol
         private boolean rollbackMode;
 
         private int iterCount1;
-        
+         
         private int iterCount2;
 
+
+	private int heartbeatDelay;
+
+	private int heartbeatCheckDelay;
+
+	private boolean heartbeatRcvd[];
 
         public ApplicationProtocol(String prefix)
         { 
@@ -69,6 +74,10 @@ public class ApplicationProtocol implements EDProtocol
                 this.rollbackMode = false;
                 this.iterCount1 = 0;
                 this.iterCount2 = 0;
+
+		this.heartbeatDelay = Configuration.getInt(prefix + ".heartbeat.delay");
+		this.heartbeatCheckDelay = Configuration.getInt(prefix + ".heartbeat.checkDelay");
+		this.heartbeatRcvd = new boolean[Network.size()];
         }
 
 
@@ -99,6 +108,8 @@ public class ApplicationProtocol implements EDProtocol
                 this.addCheckpointEvent();
                 this.addCheckpoint();
 		this.addHeartbeatEvent();
+		this.addHeartbeatCheckEvent();
+		Arrays.fill(this.heartbeatRcvd, false);
         }
 
         //broadcast, envoie d'un message a  tout le monde
@@ -125,7 +136,8 @@ public class ApplicationProtocol implements EDProtocol
         {
                 this.transport.send(getMyNode(), dest, msg, this.mypid);
 		//IMPORTANT
-		if(msg.getType() == Message.APPLICATION){
+		if(msg.getType() == Message.APPLICATION)
+		{
                 	this.nbSent[dest.getIndex()]++;
 		}
         }
@@ -134,6 +146,7 @@ public class ApplicationProtocol implements EDProtocol
         //affichage a la reception
         private void receive(Message r_msg)
         {
+		int new_time, decay_time;
                 switch (r_msg.getType())
                 {
                         case Message.INC_STATE:
@@ -200,8 +213,9 @@ public class ApplicationProtocol implements EDProtocol
                                         System.out.println("cpt 1 : " + iterCount1 + " cpt2 : "+iterCount2);
                                         this.iterCount2++;
                                         int nbRcvdNeighbour = Integer.parseInt(r_msg.getContent());
-                                        //TODO findCorrectCheckpoint : verifier le nombre de message dans le temps
+                                        //chercher le bon checkpoint
                                         Checkpoint tmp = this.findCheckpoint(nbRcvdNeighbour, r_msg.getEmitter());
+					//restaurer le bon checkpoint
                                         this.restoreCheckpoint(tmp);
                                         // Condition fin de boucle 2
                                         if (this.iterCount2 == Network.size() - 1)
@@ -227,21 +241,45 @@ public class ApplicationProtocol implements EDProtocol
 
 			case Message.HEARTBEAT:
 
-				if(r_msg.getEmitter() == this.nodeId){
+                System.out.println("[t=" + CommonState.getTime() +"] " + this + " : Received " + r_msg.getContent() + " from " + r_msg.getEmitter());
+				if(r_msg.getEmitter() == this.nodeId)
+				{
 					this.addHeartbeatEvent();
+					Message msg = new Message(Message.HEARTBEAT, "<I'm alive>", this.nodeId);
+					this.broadcast(msg);
 				}
-				else{
-					
-
-
+				else
+				{	
+					this.heartbeatRcvd[r_msg.getEmitter()] = true;	
 				}
+				break;
 
+			case Message.HBCHECK:
 				
+                System.out.println("[t=" + CommonState.getTime() +"] " + this + " : Received " + r_msg.getContent() + " from " + r_msg.getEmitter());
+				//FAULT DETECTOR
+				//boucle de detection des timeout acquis
+				System.out.println(Arrays.toString(this.heartbeatRcvd));
+				for (int i = 0; i < Network.size() ; i++){
+					if(this.heartbeatRcvd[i] == false){
+						Message msg = new Message(Message.STILLALIVE, "<Are you alive ?>", this.nodeId);
+						//TODO If it is the first time, need to setFailState !!
+						send(msg, Network.get(i));
+					}
+					else{
+						this.heartbeatRcvd[i] = false;
+
+					}
+				}
+
+				this.addHeartbeatCheckEvent();
+				break;
+
 
                         default:
                                 break;
                 }
-        }
+	}
 
 
         private void broadcastRollback()
@@ -282,10 +320,15 @@ public class ApplicationProtocol implements EDProtocol
         }
 	
 	private void addHeartbeatEvent(){
-		Message message = new Message(Message.HEARTBEAT, "<i'm alive>");
-		int delay = 10;
-		EDSimulator.add(delay, message, this.getMyNode(), this.mypid);
+		Message message = new Message(Message.HEARTBEAT, "<i'm alive>", this.nodeId);
+		EDSimulator.add(this.heartbeatDelay, message, this.getMyNode(), this.mypid);
 	}
+
+	private void addHeartbeatCheckEvent(){
+		Message message = new Message(Message.HBCHECK, "<check heartbeats>", this.nodeId);
+		EDSimulator.add(this.heartbeatCheckDelay, message, this.getMyNode(), this.mypid);
+	}
+
 
         private void restoreLastCheckpoint()
         {
