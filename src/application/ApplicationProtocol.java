@@ -3,6 +3,7 @@ package application;
 import peersim.edsim.*;
 import peersim.core.*;
 import peersim.config.*;
+
 import java.util.Arrays;
 import java.util.Stack;
 import java.lang.Integer;
@@ -56,6 +57,8 @@ public class ApplicationProtocol implements EDProtocol
 
 	private boolean heartbeatRcvd[];
 
+        private int recoveryMode;
+
         public ApplicationProtocol(String prefix)
         { 
                 this.prefix = prefix;
@@ -78,6 +81,7 @@ public class ApplicationProtocol implements EDProtocol
 		this.heartbeatDelay = Configuration.getInt(prefix + ".heartbeat.delay");
 		this.heartbeatCheckDelay = Configuration.getInt(prefix + ".heartbeat.checkDelay");
 		this.heartbeatRcvd = new boolean[Network.size()];
+                this.recoveryMode = 0;
         }
 
 
@@ -150,7 +154,7 @@ public class ApplicationProtocol implements EDProtocol
                 switch (r_msg.getType())
                 {
                         case Message.INC_STATE:
-                                if (!rollbackMode)
+                                if (!this.rollbackMode && this.recoveryMode <= 0)
                                 {
                                         this.state++;
                                         this.addIncreaseStateEvent(); 
@@ -172,7 +176,7 @@ public class ApplicationProtocol implements EDProtocol
 
                         case Message.CHECKPOINT:
                 System.out.println("[t=" + CommonState.getTime() +"] " + this + " : Received " + r_msg.getContent() + " from " + r_msg.getEmitter());
-                                if (!rollbackMode)
+                                if (!this.rollbackMode && this.recoveryMode <= 0)
                                 {
                                         this.addCheckpoint();
                                         this.addCheckpointEvent();
@@ -180,106 +184,130 @@ public class ApplicationProtocol implements EDProtocol
                                 break;
 
                         case Message.APPLICATION:
-                System.out.println("[t=" + CommonState.getTime() +"] " + this + " : Received " + r_msg.getContent() + " from " + r_msg.getEmitter());
-                                if (!rollbackMode)
+                                System.out.println("[t=" + CommonState.getTime() +"] " + this + " : Received " + r_msg.getContent() + " from " + r_msg.getEmitter());
+                                if (!this.rollbackMode && this.recoveryMode <= 0)
                                 {
                                         this.nbRcvd[r_msg.getEmitter()]++;
                                 }
                                 break;
 
                         case Message.ROLLBACK:
-                System.out.println("[t=" + CommonState.getTime() +"] " + this + " : Received " + r_msg.getContent() + " from " + r_msg.getEmitter());
-                                // Si initialisation du rollback
-                                if (!this.rollbackMode)
+                                System.out.println("[t=" + CommonState.getTime() +"] " + this + " : Received " + r_msg.getContent() + " from " + r_msg.getEmitter());   
+                                if (this.recoveryMode <= 0)
                                 {
-                                        this.rollbackMode = true;
-                                        // on envoie a tous qu'on fait un rollback
-                                        this.broadcastRollback();
+                                        // Si initialisation du rollback
+                                        if (!this.rollbackMode)
+                                        {
+                                                this.rollbackMode = true;
+                                                // on envoie a tous qu'on fait un rollback
+                                                this.broadcastRollback();
 
-                                        // Si on est fautif on restaure le dernier checkpoint
-                                        if (r_msg.getEmitter() == this.nodeId)
-                                        {
-                                                this.restoreLastCheckpoint();
-                                        }
-                                        // Sinon on cree un checkpoint volatile
-                                        else
-                                        {
-                                                this.addCheckpoint();
-                                        }
-                                }
-                                
-                                if (r_msg.getEmitter() != this.nodeId) 
-                                {
-                                        System.out.println("cpt 1 : " + iterCount1 + " cpt2 : "+iterCount2);
-                                        this.iterCount2++;
-                                        int nbRcvdNeighbour = Integer.parseInt(r_msg.getContent());
-                                        //chercher le bon checkpoint
-                                        Checkpoint tmp = this.findCheckpoint(nbRcvdNeighbour, r_msg.getEmitter());
-					//restaurer le bon checkpoint
-                                        this.restoreCheckpoint(tmp);
-                                        // Condition fin de boucle 2
-                                        if (this.iterCount2 == Network.size() - 1)
-                                        {
-                                                System.out.println("fin boucle 2");
-                                                this.iterCount1++;
-                                                this.iterCount2 = 0;
-                                                // Condition fin de boucle 1
-                                                if (this.iterCount1 == Network.size() - 1)
+                                                // Si on est fautif on restaure le dernier checkpoint
+                                                if (r_msg.getEmitter() == this.nodeId)
                                                 {
-                                                        System.out.println("fin boucle 1");
-                                                        this.iterCount1 = 1;
-                                                        this.iterCount2 = 0;
-                                                        this.rollbackMode = false;
+                                                        this.restoreLastCheckpoint();
                                                 }
-                                                else //sinon broadcast du tour de boucle 1 suivant
+                                                // Sinon on cree un checkpoint volatile
+                                                else
                                                 {
-                                                        this.broadcastRollback();
+                                                        this.addCheckpoint();
+                                                }
+                                        }
+
+                                        if (r_msg.getEmitter() != this.nodeId) 
+                                        {
+                                                System.out.println("cpt 1 : " + iterCount1 + " cpt2 : "+iterCount2);
+                                                this.iterCount2++;
+                                                int nbRcvdNeighbour = Integer.parseInt(r_msg.getContent());
+                                                //chercher le bon checkpoint
+                                                Checkpoint tmp = this.findCheckpoint(nbRcvdNeighbour, r_msg.getEmitter());
+                                                //restaurer le bon checkpoint
+                                                this.restoreCheckpoint(tmp);
+                                                // Condition fin de boucle 2
+                                                if (this.iterCount2 == Network.size() - 1)
+                                                {
+                                                        System.out.println("fin boucle 2");
+                                                        this.iterCount1++;
+                                                        this.iterCount2 = 0;
+                                                        // Condition fin de boucle 1
+                                                        if (this.iterCount1 == Network.size() - 1)
+                                                        {
+                                                                System.out.println("fin boucle 1");
+                                                                this.iterCount1 = 1;
+                                                                this.iterCount2 = 0;
+                                                                this.rollbackMode = false;
+                                                        }
+                                                        else //sinon broadcast du tour de boucle 1 suivant
+                                                        {
+                                                                this.broadcastRollback();
+                                                        }
                                                 }
                                         }
                                 }
                                 break;
 
-			case Message.HEARTBEAT:
+                        case Message.HEARTBEAT:
 
-                System.out.println("[t=" + CommonState.getTime() +"] " + this + " : Received " + r_msg.getContent() + " from " + r_msg.getEmitter());
-				if(r_msg.getEmitter() == this.nodeId)
-				{
-					this.addHeartbeatEvent();
-					Message msg = new Message(Message.HEARTBEAT, "<I'm alive>", this.nodeId);
-					this.broadcast(msg);
-				}
-				else
-				{	
-					this.heartbeatRcvd[r_msg.getEmitter()] = true;	
-				}
-				break;
+                                System.out.println("[t=" + CommonState.getTime() +"] " + this + " : Received " + r_msg.getContent() + " from " + r_msg.getEmitter());
+                                if (!this.rollbackMode && this.recoveryMode <= 0)
+                                {
+                                        if(r_msg.getEmitter() == this.nodeId)
+                                        {
+                                                this.addHeartbeatEvent();
+                                                Message msg = new Message(Message.HEARTBEAT, "<I'm alive>", this.nodeId);
+                                                this.broadcast(msg);
+                                        }
+                                        else
+                                        {	
+                                                this.heartbeatRcvd[r_msg.getEmitter()] = true;	
+                                        }
+                                }
+                                break;
 
-			case Message.HBCHECK:
-				
-                System.out.println("[t=" + CommonState.getTime() +"] " + this + " : Received " + r_msg.getContent() + " from " + r_msg.getEmitter());
-				//FAULT DETECTOR
-				//boucle de detection des timeout acquis
-				System.out.println(Arrays.toString(this.heartbeatRcvd));
-				for (int i = 0; i < Network.size() ; i++){
-					if(this.heartbeatRcvd[i] == false){
-						Message msg = new Message(Message.STILLALIVE, "<Are you alive ?>", this.nodeId);
-						//TODO If it is the first time, need to setFailState !!
-						send(msg, Network.get(i));
-					}
-					else{
-						this.heartbeatRcvd[i] = false;
+                        case Message.HBCHECK:
 
-					}
-				}
+                                System.out.println("[t=" + CommonState.getTime() +"] " + this + " : Received " + r_msg.getContent() + " from " + r_msg.getEmitter());
+                                if (!this.rollbackMode && this.recoveryMode <= 0)
+                                {
+                                        //FAULT DETECTOR
+                                        //boucle de detection des timeout acquis
+                                        System.out.println(Arrays.toString(this.heartbeatRcvd));
+                                        for (int i = 0; i < Network.size() ; i++)
+                                        {
+                                                // Le processus est fautif
+                                                if(this.heartbeatRcvd[i] == false)
+                                                {
+                                                        Network.get(i).setFailState(Fallible.OK);
+                                                        Message msg = new Message(Message.AREYOUALIVE, "<Are you alive ?>", this.nodeId);
+                                                        send(msg, Network.get(i));
 
-				this.addHeartbeatCheckEvent();
-				break;
+                                                }
+                                                // Le processus est correct
+                                                else
+                                                {
+                                                        this.heartbeatRcvd[i] = false;
+                                                }
+                                        }
 
+                                        this.addHeartbeatCheckEvent();
+                                }
+                                break;
+
+                        case Message.AREYOUALIVE :
+                                
+                                this.recoveryMode--;
+                                break;
+
+                        case Message.DIE :
+                                
+                                this.recoveryMode = 3;
+                                this.getMyNode().setFailState(Fallible.DOWN);
+                                break;
 
                         default:
                                 break;
                 }
-	}
+        }
 
 
         private void broadcastRollback()
@@ -311,23 +339,23 @@ public class ApplicationProtocol implements EDProtocol
 
         private void addCheckpoint()
         {
-		long state = this.state;
-		int[] nbSent = (int[]) this.nbSent.clone();
-		int[] nbRcvd = (int[]) this.nbRcvd.clone();
+                long state = this.state;
+                int[] nbSent = (int[]) this.nbSent.clone();
+                int[] nbRcvd = (int[]) this.nbRcvd.clone();
                 Checkpoint toAdd = new Checkpoint(state, nbSent, nbRcvd);
                 checkpoints.push(toAdd);
                 System.out.println(this + " new checkpoint added : " + toAdd);
         }
-	
-	private void addHeartbeatEvent(){
-		Message message = new Message(Message.HEARTBEAT, "<i'm alive>", this.nodeId);
-		EDSimulator.add(this.heartbeatDelay, message, this.getMyNode(), this.mypid);
-	}
 
-	private void addHeartbeatCheckEvent(){
-		Message message = new Message(Message.HBCHECK, "<check heartbeats>", this.nodeId);
-		EDSimulator.add(this.heartbeatCheckDelay, message, this.getMyNode(), this.mypid);
-	}
+        private void addHeartbeatEvent(){
+                Message message = new Message(Message.HEARTBEAT, "<i'm alive>", this.nodeId);
+                EDSimulator.add(this.heartbeatDelay, message, this.getMyNode(), this.mypid);
+        }
+
+        private void addHeartbeatCheckEvent(){
+                Message message = new Message(Message.HBCHECK, "<check heartbeats>", this.nodeId);
+                EDSimulator.add(this.heartbeatCheckDelay, message, this.getMyNode(), this.mypid);
+        }
 
 
         private void restoreLastCheckpoint()
@@ -347,11 +375,11 @@ public class ApplicationProtocol implements EDProtocol
         private Checkpoint findCheckpoint(int nbRcvdNeighbour, int neighbour)
         {
                 Checkpoint tmp; 
-		
-		do
+
+                do
                 {
                         tmp = this.checkpoints.pop();
-		//	System.out.println(this + " " + tmp + " neighbour : "+neighbour+" nbrcvd neighbour : "  + nbRcvdNeighbour);
+                        //	System.out.println(this + " " + tmp + " neighbour : "+neighbour+" nbrcvd neighbour : "  + nbRcvdNeighbour);
                 } while(tmp.getNbSent(neighbour) > nbRcvdNeighbour);
                 return tmp;
         }

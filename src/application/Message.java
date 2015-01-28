@@ -9,8 +9,9 @@ public class Message
         public final static int CHECKPOINT = 2;
         public final static int ROLLBACK = 3;
         public final static int HEARTBEAT = 4;
-        public final static int STILLALIVE = 5;
+        public final static int AREYOUALIVE = 5;
 	public final static int HBCHECK = 6;
+	public final static int DIE = 7;
 	
 
         private int type;
