@@ -42,9 +42,6 @@ public class Initializer implements peersim.core.Control
                         appProto = (ApplicationProtocol)node.getProtocol(this.applicationPid);
                         appProto.init(i);
                 }
-//                EDSimulator.add(100, new Message(Message.ROLLBACK, "10", 1), Network.get(1), 0);
-//                EDSimulator.add(200, new Message(Message.ROLLBACK, "10", 2), Network.get(2), 0);
-                        EDSimulator.add(500, new Message(Message.DIE, "<A+ sous l'bus>", -1), Network.get(2), this.applicationPid);
 
                 System.out.println("Initialization completed");
                 return false;

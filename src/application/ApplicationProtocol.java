@@ -59,6 +59,8 @@ public class ApplicationProtocol implements EDProtocol
 
         private int recoveryMode;
 
+        private int nbAreYouAlive;
+
         public ApplicationProtocol(String prefix)
         { 
                 this.prefix = prefix;
@@ -82,6 +84,7 @@ public class ApplicationProtocol implements EDProtocol
                 this.heartbeatCheckDelay = Configuration.getInt(prefix + ".heartbeat.checkDelay");
                 this.heartbeatRcvd = new boolean[Network.size()];
                 this.recoveryMode = 0;
+                this.nbAreYouAlive = Configuration.getInt(prefix + ".nbAreYouAlive");
         }
 
 
@@ -312,7 +315,7 @@ public class ApplicationProtocol implements EDProtocol
                         case Message.DIE :
                                 System.out.println("[t=" + CommonState.getTime() +"] " + this + " : Received " + r_msg.getContent() + " from " + r_msg.getEmitter());   
 
-                                this.recoveryMode = 3;
+                                this.recoveryMode = this.nbAreYouAlive;
                                 this.getMyNode().setFailState(Fallible.DOWN);
                                 break;
 
