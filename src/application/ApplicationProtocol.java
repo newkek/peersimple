@@ -25,15 +25,21 @@ public class ApplicationProtocol implements EDProtocol
 
         //le numero de noeud
         private int nodeId;
-
-        //etat du noeud dans l'application
-        private long state;
-
+        
         //probabilite d'envoyer un message apres reception d'un message INC_STATE
         private double probaMessage;
 
         //probabilite de broadcaster un message apres reception d'un message INC_STATE
         private double probaBroadcast;
+
+
+        //etat du noeud dans l'application
+        private long state;
+
+        private int stateMinTime;
+        
+        private int stateMaxTime;
+
 
         //nb de message envoyes
         private int nbSent[];
@@ -41,9 +47,15 @@ public class ApplicationProtocol implements EDProtocol
         //nb de messages recus
         private int nbRcvd[];
 
+        
         //pile de checkpoints
         private Stack<Checkpoint> checkpoints;
+        
+        private int checkpointMinTime;
+        
+        private int checkpointMaxTime;
 
+        
         private boolean rollbackMode;
 
         private int iterCount1;
@@ -71,8 +83,14 @@ public class ApplicationProtocol implements EDProtocol
                 this.probaMessage = Configuration.getDouble(prefix + ".probaMessage");
                 this.probaBroadcast = Configuration.getDouble(prefix + ".probaBroadcast");
 
-                this.checkpoints = new Stack<Checkpoint>();
                 this.state = 0;
+                this.stateMinTime = Configuration.getInt(prefix + ".stateMinTime");
+                this.stateMaxTime = Configuration.getInt(prefix + ".stateMaxTime");
+                
+                this.checkpoints = new Stack<Checkpoint>();
+                this.checkpointMinTime = Configuration.getInt(prefix + ".checkpointMinTime");
+                this.checkpointMaxTime = Configuration.getInt(prefix + ".checkpointMaxTime");
+                
                 this.nbSent = new int[Network.size()];
                 this.nbRcvd = new int[Network.size()];
 
@@ -352,14 +370,14 @@ public class ApplicationProtocol implements EDProtocol
         private void addIncreaseStateEvent()
         {
                 Message message = new Message(Message.INC_STATE, "<increase state>");
-                int delay = CommonState.r.nextInt(11)+10;
+                int delay = CommonState.r.nextInt(stateMaxTime - stateMinTime + 1) + stateMinTime;
                 EDSimulator.add(delay, message, this.getMyNode(), this.mypid);
         }
 
         private void addCheckpointEvent()
         {
                 Message message = new Message(Message.CHECKPOINT, "<checkpoint yourself>");
-                int delay = CommonState.r.nextInt(31)+45;
+                int delay = CommonState.r.nextInt(checkpointMaxTime - checkpointMinTime + 1) + checkpointMinTime;
                 EDSimulator.add(delay, message, this.getMyNode(), this.mypid);
         }
 

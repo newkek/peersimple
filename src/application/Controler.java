@@ -28,7 +28,7 @@ public class Controler implements peersim.core.Control
         {
                 int nodeNb;   //recuperation de la taille du reseau
                 nodeNb = Network.size();
-                
+                System.out.println("Controleur");
                 if (this.probaCrash > CommonState.r.nextFloat())
                 {
                         int nodeId = CommonState.r.nextInt(nodeNb);
