@@ -31,7 +31,7 @@ public class ApplicationProtocol implements EDProtocol
 
         //probabilite d'envoyer un message apres reception d'un message INC_STATE
         private double probaMessage;
-        
+
         //probabilite de broadcaster un message apres reception d'un message INC_STATE
         private double probaBroadcast;
 
@@ -40,24 +40,26 @@ public class ApplicationProtocol implements EDProtocol
 
         //nb de messages recus
         private int nbRcvd[];
-        
+
         //pile de checkpoints
         private Stack<Checkpoint> checkpoints;
 
         private boolean rollbackMode;
 
         private int iterCount1;
-         
+
         private int iterCount2;
 
 
-	private int heartbeatDelay;
+        private int heartbeatDelay;
 
-	private int heartbeatCheckDelay;
+        private int heartbeatCheckDelay;
 
-	private boolean heartbeatRcvd[];
+        private boolean heartbeatRcvd[];
 
         private int recoveryMode;
+
+        private int nbAreYouAlive;
 
         public ApplicationProtocol(String prefix)
         { 
@@ -68,7 +70,7 @@ public class ApplicationProtocol implements EDProtocol
                 this.transport = null;
                 this.probaMessage = Configuration.getDouble(prefix + ".probaMessage");
                 this.probaBroadcast = Configuration.getDouble(prefix + ".probaBroadcast");
-                
+
                 this.checkpoints = new Stack<Checkpoint>();
                 this.state = 0;
                 this.nbSent = new int[Network.size()];
@@ -78,10 +80,11 @@ public class ApplicationProtocol implements EDProtocol
                 this.iterCount1 = 0;
                 this.iterCount2 = 0;
 
-		this.heartbeatDelay = Configuration.getInt(prefix + ".heartbeat.delay");
-		this.heartbeatCheckDelay = Configuration.getInt(prefix + ".heartbeat.checkDelay");
-		this.heartbeatRcvd = new boolean[Network.size()];
+                this.heartbeatDelay = Configuration.getInt(prefix + ".heartbeat.delay");
+                this.heartbeatCheckDelay = Configuration.getInt(prefix + ".heartbeat.checkDelay");
+                this.heartbeatRcvd = new boolean[Network.size()];
                 this.recoveryMode = 0;
+                this.nbAreYouAlive = Configuration.getInt(prefix + ".nbAreYouAlive");
         }
 
 
@@ -106,14 +109,14 @@ public class ApplicationProtocol implements EDProtocol
                 //objet de la couche transport situes sur le meme noeud
                 this.nodeId = nodeId;
                 this.transport = (MatrixTransport)Network.get(this.nodeId).getProtocol(this.transportPid);
-                
+
                 //creation des evenements d'incrementaion de l'etat du noeud et de checkpoint 
                 this.addIncreaseStateEvent();
                 this.addCheckpointEvent();
                 this.addCheckpoint();
-		this.addHeartbeatEvent();
-		this.addHeartbeatCheckEvent();
-		Arrays.fill(this.heartbeatRcvd, false);
+                this.addHeartbeatEvent();
+                this.addHeartbeatCheckEvent();
+                Arrays.fill(this.heartbeatRcvd, false);
         }
 
         //broadcast, envoie d'un message a  tout le monde
@@ -139,18 +142,18 @@ public class ApplicationProtocol implements EDProtocol
         private void _send(Message msg, Node dest)
         {
                 this.transport.send(getMyNode(), dest, msg, this.mypid);
-		//IMPORTANT
-		if(msg.getType() == Message.APPLICATION)
-		{
-                	this.nbSent[dest.getIndex()]++;
-		}
+                //IMPORTANT
+                if(msg.getType() == Message.APPLICATION)
+                {
+                        this.nbSent[dest.getIndex()]++;
+                }
         }
 
 
         //affichage a la reception
         private void receive(Message r_msg)
         {
-		int new_time, decay_time;
+                int new_time, decay_time;
                 switch (r_msg.getType())
                 {
                         case Message.INC_STATE:
@@ -175,26 +178,26 @@ public class ApplicationProtocol implements EDProtocol
                                 break;
 
                         case Message.CHECKPOINT:
-                System.out.println("[t=" + CommonState.getTime() +"] " + this + " : Received " + r_msg.getContent() + " from " + r_msg.getEmitter());
                                 if (!this.rollbackMode && this.recoveryMode <= 0)
                                 {
+                                        System.out.println("[t=" + CommonState.getTime() +"] " + this + " : Received " + r_msg.getContent() + " from " + r_msg.getEmitter());
                                         this.addCheckpoint();
                                         this.addCheckpointEvent();
                                 }
                                 break;
 
                         case Message.APPLICATION:
-                                System.out.println("[t=" + CommonState.getTime() +"] " + this + " : Received " + r_msg.getContent() + " from " + r_msg.getEmitter());
                                 if (!this.rollbackMode && this.recoveryMode <= 0)
                                 {
+                                        System.out.println("[t=" + CommonState.getTime() +"] " + this + " : Received " + r_msg.getContent() + " from " + r_msg.getEmitter());
                                         this.nbRcvd[r_msg.getEmitter()]++;
                                 }
                                 break;
 
                         case Message.ROLLBACK:
-                                System.out.println("[t=" + CommonState.getTime() +"] " + this + " : Received " + r_msg.getContent() + " from " + r_msg.getEmitter());   
                                 if (this.recoveryMode <= 0)
                                 {
+                                        System.out.println("[t=" + CommonState.getTime() +"] " + this + " : Received " + r_msg.getContent() + " from " + r_msg.getEmitter());   
                                         // Si initialisation du rollback
                                         if (!this.rollbackMode)
                                         {
@@ -236,6 +239,10 @@ public class ApplicationProtocol implements EDProtocol
                                                                 this.iterCount1 = 1;
                                                                 this.iterCount2 = 0;
                                                                 this.rollbackMode = false;
+                                                                this.addHeartbeatEvent();
+                                                                this.addHeartbeatCheckEvent();
+                                                                this.addIncreaseStateEvent();
+                                                                this.addCheckpointEvent();
                                                         }
                                                         else //sinon broadcast du tour de boucle 1 suivant
                                                         {
@@ -248,14 +255,13 @@ public class ApplicationProtocol implements EDProtocol
 
                         case Message.HEARTBEAT:
 
-                                System.out.println("[t=" + CommonState.getTime() +"] " + this + " : Received " + r_msg.getContent() + " from " + r_msg.getEmitter());
-                                if (!this.rollbackMode && this.recoveryMode <= 0)
+                                if (!this.rollbackMode && (this.recoveryMode <= 0))
                                 {
+                                        System.out.println("[t=" + CommonState.getTime() +"] " + this + " : Received " + r_msg.getContent() + " from " + r_msg.getEmitter());
                                         if(r_msg.getEmitter() == this.nodeId)
                                         {
                                                 this.addHeartbeatEvent();
-                                                Message msg = new Message(Message.HEARTBEAT, "<I'm alive>", this.nodeId);
-                                                this.broadcast(msg);
+                                                this.broadcastHeartbeat();
                                         }
                                         else
                                         {	
@@ -266,26 +272,29 @@ public class ApplicationProtocol implements EDProtocol
 
                         case Message.HBCHECK:
 
-                                System.out.println("[t=" + CommonState.getTime() +"] " + this + " : Received " + r_msg.getContent() + " from " + r_msg.getEmitter());
-                                if (!this.rollbackMode && this.recoveryMode <= 0)
+                                if (!this.rollbackMode && (this.recoveryMode <= 0))
                                 {
+                                        System.out.println("[t=" + CommonState.getTime() +"] " + this + " : Received " + r_msg.getContent() + " from " + r_msg.getEmitter());
                                         //FAULT DETECTOR
                                         //boucle de detection des timeout acquis
                                         System.out.println(Arrays.toString(this.heartbeatRcvd));
                                         for (int i = 0; i < Network.size() ; i++)
                                         {
-                                                // Le processus est fautif
-                                                if(this.heartbeatRcvd[i] == false)
+                                                if (i != this.nodeId)
                                                 {
-                                                        Network.get(i).setFailState(Fallible.OK);
-                                                        Message msg = new Message(Message.AREYOUALIVE, "<Are you alive ?>", this.nodeId);
-                                                        send(msg, Network.get(i));
+                                                        // Le processus est fautif
+                                                        if(this.heartbeatRcvd[i] == false)
+                                                        {
+                                                                Network.get(i).setFailState(Fallible.OK);
+                                                                Message msg = new Message(Message.AREYOUALIVE, "<Are you alive ?>", this.nodeId);
+                                                                send(msg, Network.get(i));
 
-                                                }
-                                                // Le processus est correct
-                                                else
-                                                {
-                                                        this.heartbeatRcvd[i] = false;
+                                                        }
+                                                        // Le processus est correct
+                                                        else
+                                                        {
+                                                                this.heartbeatRcvd[i] = false;
+                                                        }
                                                 }
                                         }
 
@@ -294,13 +303,19 @@ public class ApplicationProtocol implements EDProtocol
                                 break;
 
                         case Message.AREYOUALIVE :
-                                
+                                System.out.println("[t=" + CommonState.getTime() +"] " + this + " : Received " + r_msg.getContent() + " from " + r_msg.getEmitter());   
+
                                 this.recoveryMode--;
+                                if ( this.recoveryMode == 0) 
+                                {
+                                        EDSimulator.add(0, new Message(Message.ROLLBACK, "<time to rollback>", this.nodeId), this.getMyNode(), this.mypid);
+                                }
                                 break;
 
                         case Message.DIE :
-                                
-                                this.recoveryMode = 3;
+                                System.out.println("[t=" + CommonState.getTime() +"] " + this + " : Received " + r_msg.getContent() + " from " + r_msg.getEmitter());   
+
+                                this.recoveryMode = this.nbAreYouAlive;
                                 this.getMyNode().setFailState(Fallible.DOWN);
                                 break;
 
@@ -322,6 +337,17 @@ public class ApplicationProtocol implements EDProtocol
                 }
         }
 
+        private void broadcastHeartbeat()
+        {
+                for (int i=0; i< Network.size(); i++)
+                {
+                        if (i != this.nodeId)
+                        {
+                                Message msg = new Message(Message.HEARTBEAT, "<I'm alive>", this.nodeId);
+                                this.send(msg, Network.get(i));
+                        }
+                }
+        }
 
         private void addIncreaseStateEvent()
         {
