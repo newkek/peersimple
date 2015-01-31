@@ -52,7 +52,7 @@ public class Controler implements peersim.core.Control {
 		}
 */		
 		if(CommonState.getTime() == 20){	
-			EDSimulator.add(500, Message(Message.DIE, "<A+ sous l'bus>", -1), applicationPid);
+			//EDSimulator.add(500, Message(Message.DIE, "<A+ sous l'bus>", -1), applicationPid);
 		}
 		
 		
