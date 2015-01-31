@@ -7,7 +7,7 @@ import peersim.core.*;
 import peersim.config.*;
 
 /*
-   Module d'initialisation de helloWorld: 
+  Module d'initialisation de helloWorld: 
 Fonctionnement:
 pour chaque noeud, le module fait le lien entre la couche transport et la couche applicative
 ensuite, il fait envoyer au noeud 0 un message "Hello" a tous les autres noeuds
@@ -36,4 +36,5 @@ public class Controler implements peersim.core.Control
                 }
                 return false;
         }
+>>>>>>> 7b017722347d1fbd30daad06ceed00c902faa23b
 }
