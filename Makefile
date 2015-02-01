@@ -1,13 +1,33 @@
 VER=1.0.4
 CONFDIR=config
 
+BASIC=$(CONFDIR)/basic.cfg
+DOMINO=$(CONFDIR)/domino.cfg
+BIGGRAPH=$(CONFDIR)/big_graph.cfg
+BIGLATENCY=$(CONFDIR)/big_latency.cfg
+MULTIFAULTS=$(CONFDIR)/multi_faults.cfg
+
+
 .PHONY: all run clean doc release
 
 all:
 	javac -classpath src:jep-2.3.0.jar:djep-1.0.0.jar `find src -name "*.java"`
 
 run: 
-	java -classpath src:jep-2.3.0.jar:djep-1.0.0.jar peersim/Simulator $(CONFDIR)/config2.cfg
+	java -classpath src:jep-2.3.0.jar:djep-1.0.0.jar peersim/Simulator $(BASIC)
+
+domino: 
+	java -classpath src:jep-2.3.0.jar:djep-1.0.0.jar peersim/Simulator $(DOMINO)
+
+big_graph: 
+	java -classpath src:jep-2.3.0.jar:djep-1.0.0.jar peersim/Simulator $(BIGGRAPH)
+
+big_latency: 
+	java -classpath src:jep-2.3.0.jar:djep-1.0.0.jar peersim/Simulator $(BIGLATENCY)
+
+multi_faults: 
+	java -classpath src:jep-2.3.0.jar:djep-1.0.0.jar peersim/Simulator $(MULTIFAULTS)
+
 
 clean:
 	rm -f `find . -name "*.class"`
