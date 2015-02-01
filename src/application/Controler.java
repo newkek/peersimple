@@ -36,5 +36,4 @@ public class Controler implements peersim.core.Control
                 }
                 return false;
         }
->>>>>>> 7b017722347d1fbd30daad06ceed00c902faa23b
 }

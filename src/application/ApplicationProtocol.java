@@ -254,7 +254,7 @@ public class ApplicationProtocol implements EDProtocol
                                                         if (this.iterCount1 == Network.size() - 1)
                                                         {
                                                                 System.out.println("fin boucle 1");
-                                                                this.iterCount1 = 1;
+                                                                this.iterCount1 = 0;
                                                                 this.iterCount2 = 0;
                                                                 this.rollbackMode = false;
                                                                 this.addHeartbeatEvent();
@@ -334,6 +334,7 @@ public class ApplicationProtocol implements EDProtocol
                                 System.out.println("[t=" + CommonState.getTime() +"] " + this + " : Received " + r_msg.getContent() + " from " + r_msg.getEmitter());   
 
                                 this.recoveryMode = this.nbAreYouAlive;
+                                this.rollbackMode = false;
                                 this.getMyNode().setFailState(Fallible.DOWN);
                                 break;
 
@@ -391,12 +392,14 @@ public class ApplicationProtocol implements EDProtocol
                 System.out.println(this + " new checkpoint added : " + toAdd);
         }
 
-        private void addHeartbeatEvent(){
+        private void addHeartbeatEvent()
+        {
                 Message message = new Message(Message.HEARTBEAT, "<i'm alive>", this.nodeId);
                 EDSimulator.add(this.heartbeatDelay, message, this.getMyNode(), this.mypid);
         }
 
-        private void addHeartbeatCheckEvent(){
+        private void addHeartbeatCheckEvent()
+        {
                 Message message = new Message(Message.HBCHECK, "<check heartbeats>", this.nodeId);
                 EDSimulator.add(this.heartbeatCheckDelay, message, this.getMyNode(), this.mypid);
         }
@@ -410,8 +413,8 @@ public class ApplicationProtocol implements EDProtocol
         private void restoreCheckpoint(Checkpoint checkpoint)
         {
                 this.state = checkpoint.getState();
-                this.nbSent = checkpoint.getNbSent();
-                this.nbRcvd = checkpoint.getNbRcvd();
+                this.nbSent = checkpoint.getNbSent().clone();
+                this.nbRcvd = checkpoint.getNbRcvd().clone();
                 this.checkpoints.push(checkpoint);
                 System.out.println(this.nodeId + " : next ckpt : " + checkpoint);
         }
@@ -419,7 +422,6 @@ public class ApplicationProtocol implements EDProtocol
         private Checkpoint findCheckpoint(int nbRcvdNeighbour, int neighbour)
         {
                 Checkpoint tmp; 
-
                 do
                 {
                         tmp = this.checkpoints.pop();

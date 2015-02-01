@@ -1,12 +1,13 @@
 VER=1.0.4
+CONFDIR=config
 
 .PHONY: all run clean doc release
 
 all:
 	javac -classpath src:jep-2.3.0.jar:djep-1.0.0.jar `find src -name "*.java"`
 
-run:
-	java -classpath src:jep-2.3.0.jar:djep-1.0.0.jar peersim/Simulator config_file.cfg
+run: 
+	java -classpath src:jep-2.3.0.jar:djep-1.0.0.jar peersim/Simulator $(CONFDIR)/config2.cfg
 
 clean:
 	rm -f `find . -name "*.class"`
